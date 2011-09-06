@@ -1,5 +1,5 @@
 require File.dirname(__FILE__) + "/deposit/version"
 
 module Deposit
-  # Your code goes here...
+  require File.dirname(__FILE__) + "/deposit/sword_client"
 end
