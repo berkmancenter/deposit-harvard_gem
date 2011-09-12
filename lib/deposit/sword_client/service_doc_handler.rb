@@ -42,8 +42,10 @@ class Deposit::SwordClient::ServiceDocHandler
  
   # Name of a collection tag (used to parse out specific info for each collection)
   COLLECTION_TAG = "app:collection"
+  COLLECTION_TAG_SIMPLE = "collection"
   # Name of SWORD's "acceptPackaging" tag (used to parse out the 'ranking' for each package format)
   ACCEPT_PACKAGING_TAG = "sword:acceptPackaging"
+  ACCEPT_PACKAGING_TAG_SIMPLE = "acceptPackaging"
 
   @accept_packaging_rank = 0;
 
@@ -60,20 +62,19 @@ class Deposit::SwordClient::ServiceDocHandler
     #save current tag name for later (for usage in text() method below)
     @curr_tag_name = name
 
-    #if starting a <app:collection> tag
-    if @curr_tag_name==COLLECTION_TAG
-      #Initialize current collection's info, starting with its Deposit URL
+    case @curr_tag_name
+    when COLLECTION_TAG, COLLECTION_TAG_SIMPLE
+      # if starting a <app:collection> tag
+      # Initialize current collection's info, starting with its Deposit URL
       @curr_collection = {'deposit_url' => attrs["href"]}
-
-    #Special case: the <acceptPackaging> tag includes a numerical ranking between
-    # 0 and 1 for each accepted format -- this ranking indicates the preferred format(s)
-    elsif @curr_tag_name==ACCEPT_PACKAGING_TAG
-        #If a "q" attribute is not found, assume this format is strongest preference (1.0)
-        @accept_packaging_rank = attrs["q"] ? attrs["q"].to_f : 1.0
+    when ACCEPT_PACKAGING_TAG, ACCEPT_PACKAGING_TAG_SIMPLE
+      #Special case: the <acceptPackaging> tag includes a numerical ranking between
+      # 0 and 1 for each accepted format -- this ranking indicates the preferred format(s)
+      #If a "q" attribute is not found, assume this format is strongest preference (1.0)
+      @accept_packaging_rank = attrs["q"] ? attrs["q"].to_f : 1.0
     end
   end
-  
-  
+
   #Processing when a Text Node is encountered
   def text text
 
@@ -82,10 +83,10 @@ class Deposit::SwordClient::ServiceDocHandler
 
     #do nothing if empty value
     return if value.nil? or value.empty?
-    
+
     # if we are inside a <collection> tag
     # save the text as the value of the current XML tag
-    if @curr_collection and @curr_tag_name and !@curr_tag_name.empty? and @curr_tag_name!=COLLECTION_TAG
+    if @curr_collection and @curr_tag_name and !@curr_tag_name.empty? and ! [COLLECTION_TAG, COLLECTION_TAG_SIMPLE].include?(@curr_tag_name)
 
         # Save text as a property of the current collection
         # (e.g. collection['title'] = "Collection Title",
@@ -94,7 +95,7 @@ class Deposit::SwordClient::ServiceDocHandler
 
         # Special case:  For the <acceptPackaging> tag, the value is a hash
         #  of the ranking ("q") and the packaging format.
-        if @curr_tag_name==ACCEPT_PACKAGING_TAG
+        if [ACCEPT_PACKAGING_TAG, ACCEPT_PACKAGING_TAG_SIMPLE].include? @curr_tag_name
            save_collection_prop_value prop_name, {'rank'=>@accept_packaging_rank, 'value'=>value} if @accept_packaging_rank > 0
            @accept_packaging_rank = 0.0  #reset rank back to zero
         else
@@ -126,12 +127,12 @@ class Deposit::SwordClient::ServiceDocHandler
   def tag_end name
     
     #if ending a </app:collection> tag
-    if name=="app:collection"
+    if [COLLECTION_TAG, COLLECTION_TAG_SIMPLE].include?(name)
       #finished with our current collection, save it and clear out current collection
       @parsed_service_doc.collections << @curr_collection
       @curr_collection = nil
     end
-    
+
     #clear out current tag name, no matter what
     @curr_tag_name = ""
   end
