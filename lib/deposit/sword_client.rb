@@ -48,14 +48,8 @@ class Deposit::SwordException < Exception; end
 #   #   OR specify the URL (but not BOTH!)
 #   default_collection_url: http://localhost:8080/sword-app/deposit/123456789/4
 #   #default_collection_name: My Collection
-#
-#
-#
-# You can change the location of the config path by passing a full path 
-# to the init_connection method.
-#
-#   SWORDClient.init_connection(RAILS_ROOT + '/config/sword.yml')
-#
+
+include Deposit
 
 class Deposit::SwordClient
   
@@ -63,7 +57,6 @@ class Deposit::SwordClient
   attr_accessor :connection
   
   # Currently loaded SWORD configurations
-  # from RAILS_ROOT/config/sword.yml
   attr_accessor :config
   
   # Currently loaded SWORD service document
@@ -75,33 +68,32 @@ class Deposit::SwordClient
   class << self
     def logger
       #Use RAILS_DEFAULT_LOGGER by default for all logging
-      @@logger ||= ::RAILS_DEFAULT_LOGGER
+      @@logger ||= ( ::RAILS_DEFAULT_LOGGER rescue nil )
     end
   end
     
-  #Initialize a SWORD Connection,
-  # based on the configurations
-  # read from sword.yml.
+  # Initialize a SWORD Connection based on the config params.
   #
-  # This only *initializes* a SWORDClient::Connection,
-  # and doesn't connect to SWORD Server yet
-  def initialize(config_path="#{Rails.root}/config/sword.yml")
-    
-    # Make sure sword.yml config exists
-    raise SwordException, "Could not find SwordClient configuration file at " + config_path if(!File.exists?(config_path))
-   
-    #Load our configurations
-    @config = SwordClient.load_sword_config(config_path)
-    
-    # Check for Service Document URL (service_doc_url), which is required
-    raise SwordException, "The SwordClient configuration file (sword.yml) exists, but the 'service_doc_url' is not set for your current environment." if !@config['service_doc_url'] or @config['service_doc_url'].empty?
-    
+  # This only *initializes* a SwordClient::Connection; it
+  # doesn't connect to the SWORD Server yet.
+
+  def initialize(config = {})
+
+    puts "Loading up with #{config.inspect}"
+    # Load some default config (this is basically a reverse_merge with the block)
+    @config = config.merge( "username" => nil, "service_doc_url" => "http://localhost:3000/sword-app/servicedocument", "password" => nil ) {|key, oldval, newval| oldval}
+
+    # Check for Service Document URL (service_doc_url)
+    if !@config['service_doc_url'] or @config['service_doc_url'].empty?
+      raise SwordException, "A 'service_doc_url' is required."
+    end
+
     #build our connection params from configurations
     params = {}
     params[:debug_mode] = true if @config['debug_mode']
     params[:username] = @config['username'] if @config['username'] and !@config['username'].empty?
     params[:password] = @config['password'] if @config['password'] and !@config['password'].empty?
-    
+
     #if using a proxy, we need to init proxy settings
     if @config['proxy_server'] and !@config['proxy_server'].empty?
       proxy_settings = {}
@@ -109,32 +101,19 @@ class Deposit::SwordClient
       proxy_settings[:port] = @config['proxy_port'] if @config['proxy_port'] and !@config['proxy_port'].empty?
       proxy_settings[:username] = @config['proxy_username'] if @config['proxy_username'] and !@config['proxy_username'].empty?
       proxy_settings[:password] =  @config['proxy_password'] if @config['proxy_password']and !@config['proxy_password'].empty?
-      
+
       #add all our proxy settings to params
       params[:proxy_settings] = proxy_settings
     end
-  
+
     #initialize our SWORD connection
     # (Note: this doesn't actually connect to SWORD, yet!)
     @connection = SwordClient::Connection.new(@config['service_doc_url'], params)
   end
 
-  #Tests if the SwordClient seems to be configured
-  # by attempting to initialize it based on sword.yml
-  def self.configured?
-    begin
-      client = SwordClient.new
-      return true if client.kind_of?(SwordClient)
-    rescue SwordException, Exception
-      #rescue any exception, but do nothing
-    end
-    return false
-  end
-  
-  # Retrieve the SWORD Service Document for current connection,
-  # based on configs read from sword.yml.
+  # Retrieve the SWORD Service Document for current connection.
   def service_document
-   
+
     if !@service_doc #use already cached service doc, if exists
       if @config['service_doc_path'] and !@config['service_doc_path'].empty?
         @service_doc = @connection.service_document(@config['service_doc_path'])
@@ -142,12 +121,11 @@ class Deposit::SwordClient
         @service_doc = @connection.service_document
       end
     end
-    
+
     @service_doc
   end
-  
-  # Retrieve and parse the SWORD Service Document for current connection,
-  # based on configs read from sword.yml.
+
+  # Retrieve and parse the SWORD Service Document for current connection.
   #
   # This returns a SwordClient::ParsedServiceDoc.  In addition, it caches
   # this parsed service document for future requests using same client.
@@ -166,10 +144,10 @@ class Deposit::SwordClient
   
   
   # Posts a file to the SWORD connection for deposit.
-  #   Paths are initialized based on configs read from sword.yml
+  #   Paths are initialized based on config params.
   #
   # If deposit URL is unspecified, it posts to the 
-  # default collection (if one is specified in sword.yml)
+  # default collection (if one is specified in config params)
   #
   # For a list of valid 'headers', see Connection.post_file()
   def post_file(file_path, deposit_url=nil, headers={})
@@ -206,7 +184,7 @@ class Deposit::SwordClient
   
   
   # Retrieve collection hash for the Collection that has
-  # been specified (in sword.yml) as the "default" collection
+  # specified (in config params) as the "default" collection
   # for all SWORD deposits.  This pulls the information from
   # the currently loaded Service Document.
   #
@@ -242,13 +220,6 @@ class Deposit::SwordClient
     parsed_doc.repository_name
   end
 
-  private
-  
-  #Load our SWORD Configurations from sword.yml
-  def self.load_sword_config(config_path)
-    YAML::load(File.read(config_path))[RAILS_ENV]
-  end
-  
 end
 
 #load SwordClient sub-classes
