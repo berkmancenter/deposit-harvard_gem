@@ -25,17 +25,23 @@ class Deposit::SwordClient::Repository
     # set the collections in the repo
     @collections = @parsed_service_document.collections
 
+    @coll2 = []
+
     # set the default collection
     # TODO : Add Collection
 #    @default = collection(@config['default_collection_url'])
 
   end
 
+  def coll2
+    @coll2
+  end
+
   # Parse the given SWORD Service Document.
   #
   # Returns a SwordClient::ParsedServiceDoc containing all the
   # information we could parse from the SWORD Service Document.
-  def self.parse_service_doc_new(service_doc_response)
+  def parse_service_doc_new(service_doc_response)
 
     doc = REXML::Document.new service_doc_response
     root = doc.root
@@ -55,24 +61,55 @@ class Deposit::SwordClient::Repository
       end
     end
 
-
 #.. root.each_element("//collection/") {|coll| puts "v"*80; puts "#{coll.expanded_name}: #{coll.elements['atom:title'].get_text}"; puts "v"*80; coll.each_element {|e| p e} ; puts "*"*80}
+    root.each_element("//collection/") do |collection|
+      current_collection = {'deposit_url' => collection.attributes['href']}
+
+      collection.elements.each do |e|
+        if e.name == "acceptPackaging"
+          accept_packaging_rank = e.attributes["q"] ? e.attributes["q"].to_f : 1.0
+          stack_and_save current_collection, e.name, {'rank' => accept_packaging_rank, 'value' => e.text}
+      else
+          current_collection[e.name] = e.text
+        end
+      end
+
+      @coll2 << current_collection
+    end
 
 #..    @parsed_service_doc.collections << @curr_collection
 
-    #If we aren't in a collection, and we encounter an <atom:title>,
-    # then we've found the repository's name
+    # Mimic (for now) the current behavior in the stream parser, and
+    # set the repo's name to the last non-collection atom:title node's value
+    root.elements["/*/*/atom:title[last()]"]
+    # Could also do it this way:
 
-      #capture the repository's name
+    #..       > root.each_element("workspace/atom:title") {|e| p e.text}
+    #..      "SWORD Test Group"
+    #..      "Default"
+
 #..      @parsed_service_doc.repository_name = value
 
+  end
 
-#..       > root.each_element("workspace/atom:title") {|t| t.each {|e| p e}}
-#..      "SWORD Test Group"
-#..      "Default"
+  # Saves a property value for the current collection.
+  # This method ensures that multiple values are changed into an
+  # array of values
+  def stack_and_save destination, key, new_value
+      #If this property already had a previous value(s) for this collection,
+      # then we want to change this property into an array of all its values
+      if destination[key]
+        # If not already an Array, change into an Array
+        if ! destination[key].kind_of? Array
+          # Change property into an array of values
+          destination[key] = [ destination[key] ]
+        end
 
-    #return SwordClient::ParsedServiceDoc
-    docHandler.parsed_service_doc
+        # append to current array of values
+        destination[key] << new_value
+      else
+        destination[key] = new_value
+      end
   end
 
   # Parse the given SWORD Service Document.
