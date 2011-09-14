@@ -13,6 +13,50 @@ class Deposit::SwordClient::Response
   #
   # Returns a SwordClient::ParsedServiceDoc containing all the
   # information we could parse from the SWORD Service Document.
+  def self.parse_service_doc_new(service_doc_response)
+
+    doc = REXML::Document.new service_doc_response
+    root = doc.root
+
+    parsed_service_doc = SwordClient::ParsedServiceDoc.new
+
+    root.elements.each do |e|
+      case e.expanded_name
+      when "sword:version"
+        parsed_service_doc.version = e.text
+      when "sword:verbose"
+        parsed_service_doc.verbose = e.text
+      when "sword:noOp"
+        parsed_service_doc.no_op = e.text
+      when "sword:maxUploadSize"
+        parsed_service_doc.max_upload_size = e.text
+      end
+    end
+
+
+#.. root.each_element("//collection/") {|coll| puts "v"*80; puts "#{coll.expanded_name}: #{coll.elements['atom:title'].get_text}"; puts "v"*80; coll.each_element {|e| p e} ; puts "*"*80}
+
+#..    @parsed_service_doc.collections << @curr_collection
+
+    #If we aren't in a collection, and we encounter an <atom:title>,
+    # then we've found the repository's name
+
+      #capture the repository's name
+#..      @parsed_service_doc.repository_name = value
+
+
+#..       > root.each_element("workspace/atom:title") {|t| t.each {|e| p e}}
+#..      "SWORD Test Group"
+#..      "Default"
+
+    #return SwordClient::ParsedServiceDoc
+    docHandler.parsed_service_doc
+  end
+
+  # Parse the given SWORD Service Document.
+  #
+  # Returns a SwordClient::ParsedServiceDoc containing all the
+  # information we could parse from the SWORD Service Document.
   def self.parse_service_doc(service_doc_response)
     
     # We will use SAX Parsing with REXML
@@ -23,10 +67,9 @@ class Deposit::SwordClient::Response
     #parse Source Doc XML using our custom handler
     REXML::Document.parse_stream src, docHandler
     
-    #return SwordClient::ParsedServiceDoc 
+    #return SwordClient::ParsedServiceDoc
     docHandler.parsed_service_doc
   end
-
 
   # Parses the response from post_file() call into 
   # a Hash similar which has the same general structure
