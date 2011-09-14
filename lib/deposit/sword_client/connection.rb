@@ -6,24 +6,24 @@
 require 'net/https'
 
 class Deposit::SwordClient::Connection
-  
+
   # URL of SWORD Server (actually URL of service document), and the persistent connection to it
   attr_reader :url, :connection
-  
+
   # Timeout for our connection
   attr_reader :timeout
-  
+
   #User Name & Password to Authenticate with
   attr_writer :username, :password
-  
+
   # If depositing on behalf of someone else, this is his/her username
   attr_accessor :on_behalf_of
-  
+
   # Proxy Settings to use for all requests (if necessary)
   # This is a hash including {:server, :port, :username, :password}
   attr_accessor :proxy_settings
-  
-  
+
+
   # Initialize a connection to a SWORD Server instance, whose Service Document
   #   is located at the URL specified.  This does *not* request the
   #   Service Document, it just initializes a Connection with information.
@@ -84,13 +84,38 @@ class Deposit::SwordClient::Connection
   # This will return the service document (as an XML string) if found,
   # otherwise it throws a response error.
   def service_document
-    
-    response = fetch(@url.to_s)
-    
-    #service document should just be in body of request
+    response = get(@url.to_s)
     response.body
   end
 
+  # GET collection ATOM description - url should be collection IRI
+  # GET container ATOM receipt - url should be container edit IRI
+  # GET container content - url should be container edit-media IRI
+  def get(url, headers={})
+    dorequest("get", url, nil, headers)
+  end
+
+  # POST new package and/or metadata - url should be collection IRI
+  # POST additional content - url should be container edit IRI
+  def post(object, url, headers={})
+    dorequest("post", url, object, headers)
+  end
+
+  # PUT new metadata - url should be container edit IRI
+  # PUT totally new content - url should be container edit-media IRI
+  def put(object, url, headers={})
+    dorequest("put", url, object, headers)
+  end
+
+  # DELETE container - url should be container edit IRI
+  # DELETE content - url should be container edit-media IRI
+  def delete(url)
+    dorequest("delete", url)
+  end
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # Posts a file to the SWORD connection for deposit.
   #   Deposit URL must be specified.  It should be a 
   #   deposit URL of a specific collection to deposit to,
@@ -123,7 +148,7 @@ class Deposit::SwordClient::Connection
     else
       file = File.open(file_path, 'rb') # force opening in Binary file mode
     end
-      
+
     # POST our file to deposit_url
     response = request("post", deposit_url, post_headers, file)
 
@@ -163,93 +188,91 @@ class Deposit::SwordClient::Connection
     
     return http_headers
   end
-  
-  
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
   ###################
   # PRIVATE METHODS
   ###################
   private
-  
-  # Fetch (via GET) a path using our current connection, 
-  # and follow redirections down to 10 levels deep (by default)
-  def fetch(path, limit = 10)
-    
+
+  # wrap request in a redirect follower, up to 10 levels by default
+  def dorequest(verb,path, body = nil, headers = {}, limit = 10)
     raise SwordException, 'HTTP redirection is too deep...cannot retrieve requested path: ' + path if limit == 0
-
-    #make our GET request
-    response = request("get", path)
-
+    response = request(verb, path, body, headers)
     #determine response
     case response
-    when Net::HTTPSuccess     then response
-    when Net::HTTPRedirection then fetch(response['location'], limit - 1)
+      when Net::HTTPSuccess     then response
+      when Net::HTTPRedirection then dorequest(verb, response['location'], body, headers, limit - 1)
     else
       response.error!
     end
   end
-  
-  # This method actually makes a request to the SWORD server  
-  # The "verb" can be either "get" or "post" (the two HTTP verbs supported by SWORD)
-  # The "body" may be text to send, or a File (via File.open)
-  #
-  # This method returns a response
-  #
-  # Note: This method is based on similar method in Amazon S3 ruby code 
-  # (http://amazon.rubyforge.org/doc/)
-  def request(verb, path, headers = {}, body = nil, attempts = 0, &block)
-        
-    #If body was already read once, may need to rewind it
+
+  # send request to the sword server
+  def request(verb, path, content, headers = {}, attempts = 0, &block)
+
+    # get the content open for sending
+    if !content.nil? and File.exists?(content)
+      if headers.has_key?('Content-Type')
+        if headers['Content-Type'].match('^text\/.*') #check if MIME Type begins with "text/"
+          body = File.open(content) # open as normal (text-based format)
+        else
+          body = File.open(content, 'rb') # open in Binary file mode
+        end
+      else
+        body = File.open(content, 'rb') # open in Binary file mode
+      end
+    else
+      body = content
+    end
+
+    # If body was already read once, may need to rewind it
     body.rewind if body.respond_to?(:rewind) unless attempts.zero?      
     
-    #Build our "request" procedure
+    # build "request" procedure
     requester = Proc.new do 
-      
-      #init request type
-      request = request_method(verb).new(path, headers)
-      
-      #Check all our necessary request headers are set
-      add_user_agent!(request)
-      add_sword_headers!(request)
-      authenticate!(request)
-   
+
+      # init request type
+      request = Net::HTTP.const_get(verb.to_s.capitalize).new(path.to_s, headers)
+
+      # set standard auth request headers
+      request['User-Agent'] ||= "Ruby SWORD Client"
+      request['On-Behalf-Of'] ||= @on_behalf_of.to_s if @on_behalf_of
+
+      request.basic_auth @username, @password if @username and @password
+
       if body
-        #If body responds to 'read', it is a file which should be streamed
+        # if body can be read, stream it
         if body.respond_to?(:read)                                                                
-          request.body_stream    = body
-          add_file_info!(request, body)
-        else  
-          #Otherwise, we can just add the body to request as-is
+          request.content_length = body.respond_to?(:lstat) ? body.lstat.size : body.size
+          request.body_stream = body
+        else
+          # otherwise just add as is
           request.body = body                                                                     
-        end                                                                                       
+        end
       end
       
       @connection.request(request, &block)
     end
     
-    #actually start our request
+    # do the request
     @connection.start(&requester)
   rescue Errno::EPIPE, Timeout::Error, Errno::EPIPE, Errno::EINVAL
-    #try 3 times before failing altogether
+    # try 3 times before failing altogether
     attempts == 3 ? raise : (attempts += 1; retry)
   rescue Errno::ECONNREFUSED => error_msg
-    raise SwordException, "Connection to SWORD Server (path='#{path}') was refused!  Are you sure it's up?\n\nUnderlying error: " + error_msg
+    raise SwordException, "connection to sword Server (path='#{path}') was refused! Is it up?\n\nUnderlying error: " + error_msg
   end
-  
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # If specified, add authentication information into Request
   def authenticate!(request)
     if @username and @password  
       request.basic_auth @username, @password
     end
-  end
-  
-  # If unspecified, set User-Agent to Ruby SWORD Client
-  def add_user_agent!(request)
-    request['User-Agent'] ||= "Ruby SWORD Client"
-  end
-  
-  # Set our SWORD headers, if they haven't been set already
-  def add_sword_headers!(request)
-    request['X-On-Behalf-Of'] ||= @on_behalf_of.to_s  if @on_behalf_of
   end
   
   # If unspecified, add file information to request
@@ -268,5 +291,6 @@ class Deposit::SwordClient::Connection
   def request_method(verb)
     Net::HTTP.const_get(verb.to_s.capitalize)
   end
- 
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 end
