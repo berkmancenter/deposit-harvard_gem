@@ -92,25 +92,25 @@ class Deposit::SwordClient::Connection
   # GET container ATOM receipt - url should be container edit IRI
   # GET container content - url should be container edit-media IRI
   def get(url, headers={})
-    dorequest("get", url, nil, headers)
+    do_request("get", url, nil, headers)
   end
 
   # POST new package and/or metadata - url should be collection IRI
   # POST additional content - url should be container edit IRI
   def post(object, url, headers={})
-    dorequest("post", url, object, headers)
+    do_request("post", url, object, headers)
   end
 
   # PUT new metadata - url should be container edit IRI
   # PUT totally new content - url should be container edit-media IRI
   def put(object, url, headers={})
-    dorequest("put", url, object, headers)
+    do_request("put", url, object, headers)
   end
 
   # DELETE container - url should be container edit IRI
   # DELETE content - url should be container edit-media IRI
   def delete(url)
-    dorequest("delete", url)
+    do_request("delete", url)
   end
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -199,13 +199,13 @@ class Deposit::SwordClient::Connection
   private
 
   # wrap request in a redirect follower, up to 10 levels by default
-  def dorequest(verb,path, body = nil, headers = {}, limit = 10)
+  def do_request(verb,path, body = nil, headers = {}, limit = 10)
     raise SwordException, 'HTTP redirection is too deep...cannot retrieve requested path: ' + path if limit == 0
     response = request(verb, path, body, headers)
     #determine response
     case response
       when Net::HTTPSuccess     then response
-      when Net::HTTPRedirection then dorequest(verb, response['location'], body, headers, limit - 1)
+      when Net::HTTPRedirection then do_request(verb, response['location'], body, headers, limit - 1)
     else
       response.error!
     end
