@@ -92,7 +92,7 @@ class Deposit::SwordClient
 
     puts "Loading up with #{config.inspect}"
     # Load some default config (this is basically a reverse_merge with the block)
-    @config = config.merge( "username" => nil, "service_doc_url" => "http://localhost:3000/sword-app/servicedocument", "password" => nil ) {|key, oldval, newval| oldval}
+    @config = config.merge( "service_doc_url" => "http://localhost:3000/sword-app/servicedocument", "username" => nil, "password" => nil ) {|key, oldval, newval| oldval}
 
     # Check for Service Document URL (service_doc_url)
     if !@config['service_doc_url'] or @config['service_doc_url'].empty?
