@@ -143,24 +143,10 @@ class Deposit::SwordClient::Connection
     # Map our passed in headers to valid HTTP POST headers
     post_headers = http_post_headers(headers)
     
-    if post_headers['Content-Type'].match('^text\/.*') #check if MIME Type begins with "text/"
-      file = File.open(file_path) # open as normal (text-based format)
-    else
-      file = File.open(file_path, 'rb') # force opening in Binary file mode
-    end
-
     # POST our file to deposit_url
-    response = request("post", deposit_url, post_headers, file)
-
-    #determine response
-    case response
-    when Net::HTTPSuccess then response.body
-    else
-      response.error!
-    end
-    
+    post(file, deposit_url, post_headers)
   end
-  
+
   #Map our POST-specific Connection 'headers' to valid SWORD HTTP Headers
   #(Note: headers which can also be sent in a GET request are specified
   #       by add_sword_headers!())
@@ -191,7 +177,6 @@ class Deposit::SwordClient::Connection
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 
   ###################
   # PRIVATE METHODS

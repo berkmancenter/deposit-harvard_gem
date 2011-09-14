@@ -1,13 +1,35 @@
-# SWORD Client Utilities
-#  
-# These utilities help to parse information
-# out of responses received from a SWORD Server
+# SWORD Client Repository
 
 require 'rexml/document'
 # Must require ActiveRecord, as it adds the Hash.from_xml() method (used below)
 require 'active_record'
 
-class Deposit::SwordClient::Response
+class Deposit::SwordClient::Repository
+
+  # getsets for repo info
+  attr_accessor :parsed_service_document, :service_document, :name, :collections, :default
+
+  def initialize(connection)
+    # make the variables available
+    @connection = connection
+
+    # Load the service doc
+    @service_document ||= @connection.service_document
+
+    # parse the service document
+    @parsed_service_document = self.class.parse_service_doc(service_document)
+
+    # set repo name
+    @name = @parsed_service_document.repository_name
+
+    # set the collections in the repo
+    @collections = @parsed_service_document.collections
+
+    # set the default collection
+    # TODO : Add Collection
+#    @default = collection(@config['default_collection_url'])
+
+  end
 
   # Parse the given SWORD Service Document.
   #

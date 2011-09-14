@@ -49,12 +49,10 @@ class Deposit::SwordClient::ServiceDocHandler
 
   @accept_packaging_rank = 0;
 
-
   def initialize
     #initialize our ParsedServiceDoc
     @parsed_service_doc = SwordClient::ParsedServiceDoc.new
   end
-
 
   #Processing when a start tag is encountered (e.g. <sword>)
   def tag_start name, attrs

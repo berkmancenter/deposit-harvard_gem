@@ -122,38 +122,11 @@ class Deposit::SwordClient
     @connection = SwordClient::Connection.new(@config['service_doc_url'], params)
   end
 
-  # Retrieve the SWORD Service Document for current connection.
-  def service_document
-
-    if !@service_doc #use already cached service doc, if exists
-      if @config['service_doc_path'] and !@config['service_doc_path'].empty?
-        @service_doc = @connection.service_document(@config['service_doc_path'])
-      else
-        @service_doc = @connection.service_document
-      end
-    end
-
-    @service_doc
+  # get the details about the repo at the end of the connection
+  def repository
+    @repository ||= SwordClient::Repository.new(@connection)
   end
 
-  # Retrieve and parse the SWORD Service Document for current connection.
-  #
-  # This returns a SwordClient::ParsedServiceDoc.  In addition, it caches
-  # this parsed service document for future requests using same client.
-  def parsed_service_document
-   
-    if !@parsed_service_doc  #use already cached service doc, if exists
-      #get service doc
-      doc = service_document
-        
-      #parse it into a SwordClient::ParsedServiceDoc
-      @parsed_service_doc = SwordClient::Response.parse_service_doc(doc)
-    end
-    
-    @parsed_service_doc  
-  end
-  
-  
   # Posts a file to the SWORD connection for deposit.
   #   Paths are initialized based on config params.
   #
@@ -177,23 +150,6 @@ class Deposit::SwordClient
     end
   end
 
-  # Retrieve array of available collections from the currently loaded 
-  # SWORD Service Document.  Each collection is represented by a
-  # hash of attributes.
-  # 
-  # Caches this array of collections for future requests using same client.
-  #
-  # See SwordClient::ParsedServiceDoc for hash structure. 
-  def get_collections
-    
-    #get parsed service document
-    parsed_doc = parsed_service_document
-    
-    #return parsed out collections
-    parsed_doc.collections
-  end
-  
-  
   # Retrieve collection hash for the Collection that has
   # specified (in config params) as the "default" collection
   # for all SWORD deposits.  This pulls the information from
@@ -219,16 +175,35 @@ class Deposit::SwordClient
     
     default_collection
   end
-  
-  # Retrieve repository name from the currently loaded 
-  # SWORD Service Document.  
+
+  # DEPRECATED
+
+  # Retrieve array of available collections from the currently loaded
+  # SWORD Service Document.  Each collection is represented by a
+  # hash of attributes.
+  #
+  # Caches this array of collections for future requests using same client.
+  #
+  # See SwordClient::ParsedServiceDoc for hash structure.
+  def get_collections
+    repository.collections
+  end
+
   def get_repository_name
-    
-    #get parsed service document
-    parsed_doc = parsed_service_document
-    
-    #return parsed out repository name
-    parsed_doc.repository_name
+    repository.name
+  end
+
+  # Retrieve the SWORD Service Document for current repository.
+  def service_document
+    repository.service_document
+  end
+
+  # Retrieve and parse the SWORD Service Document for current connection.
+  #
+  # This returns a SwordClient::ParsedServiceDoc.  In addition, it caches
+  # this parsed service document for future requests using same client.
+  def parsed_service_document
+   repository.parsed_service_document
   end
 
 end
@@ -236,5 +211,5 @@ end
 #load SwordClient sub-classes
 require File.dirname(__FILE__) + '/sword_client/connection'
 require File.dirname(__FILE__) + '/sword_client/service_doc_handler'
-require File.dirname(__FILE__) + '/sword_client/response'
+require File.dirname(__FILE__) + '/sword_client/repository'
 require File.dirname(__FILE__) + '/sword_client/parsed_service_doc'
