@@ -67,8 +67,8 @@ class Deposit::SwordClient
   
   class << self
     def logger
-      #Use RAILS_DEFAULT_LOGGER by default for all logging
-      @@logger ||= ( ::RAILS_DEFAULT_LOGGER rescue nil )
+      @@logger ||= ::Rails.logger if defined?(Rails.logger)
+      @@logger ||= ::STDOUT
     end
   end
     
