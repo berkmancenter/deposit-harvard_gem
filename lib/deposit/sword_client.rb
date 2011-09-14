@@ -1,6 +1,3 @@
-#define a custom exception for Sword Client
-class Deposit::SwordException < Exception; end
-
 # A Ruby-based SWORD Client
 #
 # This allows you to make requests (via HTTP) to an existing
@@ -9,6 +6,17 @@ class Deposit::SwordException < Exception; end
 # For more information on SWORD and the SWORD APP Profile:
 #  http://www.swordapp.org/
 #
+# Gem extracted from the original 1.3 client in BibApp, which
+# was possibly written by Tim Donohue. See: http://bibapp.org/
+#
+# Some connection code and classes originally from the Ruby
+# Sword 2.0 client by Mark MacGillivray mark@cottagelabs.com,
+# developed as part of the JISC SWORD 2.0 project.
+# See http://cottagelabs.com/some-post-about-sword2_client-ruby-client
+# for more info about that Ruby client gem.
+
+# by Mark MacGillivray mark@cottagelabs.com
+
 # == Configuration
 #
 # Configuration is done via <tt>RAILS_ROOT/config/sword.yml</tt> 
@@ -48,6 +56,9 @@ class Deposit::SwordException < Exception; end
 #   #   OR specify the URL (but not BOTH!)
 #   default_collection_url: http://localhost:8080/sword-app/deposit/123456789/4
 #   #default_collection_name: My Collection
+
+# Define a custom exception for Sword Client
+class Deposit::SwordException < Exception; end
 
 include Deposit
 
