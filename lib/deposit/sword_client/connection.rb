@@ -133,18 +133,18 @@ class Deposit::SwordClient::Connection
   #    :md5 => The MD5 Checksum of the contents
   #    
   def post_file(file_path, deposit_url, headers={})
-   
+
     # Make sure file exists
     raise SwordException, "Could not find file at " + file_path if(!File.exists?(file_path))
-   
+
     # Make sure we have a deposit URL
     raise SwordException.new, "File '#{file_path}' could not be posted via SWORD as no deposit URL was specified!" if !deposit_url or deposit_url.empty?
-    
+
     # Map our passed in headers to valid HTTP POST headers
     post_headers = http_post_headers(headers)
-    
+
     # POST our file to deposit_url
-    post(file, deposit_url, post_headers)
+    post(file_path, deposit_url, post_headers)
   end
 
   #Map our POST-specific Connection 'headers' to valid SWORD HTTP Headers
@@ -165,7 +165,7 @@ class Deposit::SwordClient::Connection
     http_headers = {}
     headers.each_key do |key|
       r_key = header_mapping[key]   #map the key to appropriate HTTP header
-      http_headers[r_key] = headers[key].to_s
+      http_headers[r_key] = headers[key].to_s if r_key
     end
     
     #Set our defaults for POST: sending a Zipped up METS file which works with DSpace.org
@@ -184,7 +184,7 @@ class Deposit::SwordClient::Connection
   private
 
   # wrap request in a redirect follower, up to 10 levels by default
-  def do_request(verb,path, body = nil, headers = {}, limit = 10)
+  def do_request(verb, path, body = nil, headers = {}, limit = 10)
     raise SwordException, 'HTTP redirection is too deep...cannot retrieve requested path: ' + path if limit == 0
     response = request(verb, path, body, headers)
     #determine response
