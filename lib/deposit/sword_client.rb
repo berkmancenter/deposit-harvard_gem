@@ -208,8 +208,5 @@ class Deposit::SwordClient
 
 end
 
-#load SwordClient sub-classes
-require File.dirname(__FILE__) + '/sword_client/connection'
-require File.dirname(__FILE__) + '/sword_client/service_doc_handler'
-require File.dirname(__FILE__) + '/sword_client/repository'
-require File.dirname(__FILE__) + '/sword_client/parsed_service_doc'
+# load SwordClient sub-classes
+Dir[File.dirname(__FILE__) + '/sword_client/*.rb'].each {|file| require file }
