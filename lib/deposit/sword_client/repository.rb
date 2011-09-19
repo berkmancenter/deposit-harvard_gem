@@ -7,7 +7,7 @@ require 'active_record'
 class Deposit::SwordClient::Repository
 
   # getsets for repo info
-  attr_accessor :parsed_service_document, :service_document, :name, :collections, :default
+  attr_accessor :collections, :connection, :default, :name, :parsed_service_document, :service_document
 
   def initialize(connection)
     # make the variables available
@@ -16,32 +16,59 @@ class Deposit::SwordClient::Repository
     # Load the service doc
     @service_document ||= @connection.service_document
 
-    # parse the service document
-    @parsed_service_document = self.class.parse_service_doc(service_document)
-
-    # set repo name
-    @name = @parsed_service_document.repository_name
-
-    # set the collections in the repo
-    @collections = @parsed_service_document.collections
-
     @coll2 = []
+    @coll3 = []
 
-    # set the default collection
-    # TODO : Add Collection
-#    @default = collection(@config['default_collection_url'])
+    if false   # the old way
+      # parse the service document
+      @parsed_service_document = self.class.parse_service_doc_old(service_document)
 
+      # set repo name
+      @name = @parsed_service_document.repository_name
+
+      # set the collections in the repo
+      @collections = @parsed_service_document.collections
+    else
+      # The new, shiny way
+      @parsed_service_document = parse_service_doc
+      @parsed_service_document.collections = @coll2  # old stuff - TODO : remove this after new way is all sussed out
+      @collections = @coll3
+    end
+
+    # TODO - set the default collection
+    # @default = get_default_collection( { 'default_collection_url' => @config['default_collection_url'],
+    #                                      'default_collection_name' => @config['default_collection_name'] } )
   end
 
   def coll2
     @coll2
   end
 
+  def coll3
+    @coll3
+  end
+
+  def get_default_collection(params = {})
+    # locate our default collection, based on params from config
+    default_collection = nil
+    @collections.each do |c|
+      if params['default_collection_url']
+        default_collection = c if c['deposit_url'].to_s.strip == params['default_collection_url'].strip
+        break if default_collection # first matching collection wins!
+      elsif params['default_collection_name']
+        default_collection = c if c['title'].to_s.strip.downcase == params['default_collection_name'].strip.downcase
+        break if default_collection # first matching collection wins!
+      end
+    end
+
+    default_collection
+  end
+
   # Parse the given SWORD Service Document.
   #
   # Returns a SwordClient::ParsedServiceDoc containing all the
   # information we could parse from the SWORD Service Document.
-  def parse_service_doc_new(service_doc_response)
+  def parse_service_doc(service_doc_response = @service_document)
 
     doc = REXML::Document.new service_doc_response
     root = doc.root
@@ -62,8 +89,8 @@ class Deposit::SwordClient::Repository
     end
 
 #.. root.each_element("//collection/") {|coll| puts "v"*80; puts "#{coll.expanded_name}: #{coll.elements['atom:title'].get_text}"; puts "v"*80; coll.each_element {|e| p e} ; puts "*"*80}
-    root.each_element("//collection/") do |collection|
-      c_dog = Collection.new(collection)
+    root.each_element("//collection|//app:collection") do |collection|
+      c_dog = Deposit::SwordClient::Collection.new(self, collection)
       current_collection = {'deposit_url' => collection.attributes['href']}
 
       collection.elements.each do |e|
@@ -74,7 +101,7 @@ class Deposit::SwordClient::Repository
           current_collection[e.name] = e.text
         end
       end
-
+      @coll3 << c_dog
       @coll2 << current_collection
     end
 
@@ -82,7 +109,8 @@ class Deposit::SwordClient::Repository
 
     # Mimic (for now) the current behavior in the stream parser, and
     # set the repo's name to the last non-collection atom:title node's value
-    root.elements["/*/*/atom:title[last()]"]
+    @name ||= root.elements["/*/*/atom:title[last()]"].get_text
+
     # Could also do it this way:
 
     #..       > root.each_element("workspace/atom:title") {|e| p e.text}
@@ -90,7 +118,7 @@ class Deposit::SwordClient::Repository
     #..      "Default"
 
 #..      @parsed_service_doc.repository_name = value
-
+    parsed_service_doc
   end
 
   # Saves a property value for the current collection.
@@ -117,7 +145,7 @@ class Deposit::SwordClient::Repository
   #
   # Returns a SwordClient::ParsedServiceDoc containing all the
   # information we could parse from the SWORD Service Document.
-  def self.parse_service_doc(service_doc_response)
+  def self.parse_service_doc_old(service_doc_response)
     
     # We will use SAX Parsing with REXML
     src = REXML::Source.new service_doc_response

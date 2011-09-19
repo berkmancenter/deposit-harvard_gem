@@ -19,43 +19,29 @@
 
 # == Configuration
 #
-# Configuration is done via <tt>RAILS_ROOT/config/sword.yml</tt> 
-# and is loaded according to the <tt>RAILS_ENV</tt>.
-# The minimum connection options that you must specify depend
+# The minimum connection options you must specify depend
 # on the location of your SWORD server (and whether it requires
 # authentication).  Minimally, you likely need to change
 # "SWORD Service Document URL" and "SWORD Server Default Login"
 #
 # Example production configuration (RAILS_ROOT/config/sword.yml)
-# 
-# production:
-#   # SWORD Server's Service Document URL
-#   service_doc_url: http://localhost:8080/sword-app/servicedocument
+#
+# d = Deposit::SwordClient.new( 'service_doc_url' => 'http://localhost:8080/sword-app/servicedocument',
+#                               'username' => 'bob', 'password' => 'sekret')
+#
+# If you requirea Proxy to connect to the SWORD server, you must specify it as well, like so:
 #  
-#   # SWORD Server Default Login credentials
-#   username:
-#   password:
-#  
-#   # Proxy Settings
-#   #   Only necessary if you require a Proxy 
-#   #   to connect to SWORD Server.  If using
-#   #   a proxy, only the proxy_server is required.
-#   proxy_server: my.proxy.edu
-#   proxy_port: 80
-#   proxy_username: myproxyuser
-#   proxy_password: myproxypass
-#  
-#   # Default Collection to deposit to
-#   #   URL should correspond to the Deposit URL
-#   #   of a collection as returned by Service Document.
-#   #   If unspecified, then a user will need to
-#   #   select a collection *before* a deposit
-#   #   can be made via SWORD
-#   #
-#   #   Either specify the Name of the Collection
-#   #   OR specify the URL (but not BOTH!)
-#   default_collection_url: http://localhost:8080/sword-app/deposit/123456789/4
-#   #default_collection_name: My Collection
+# d = Deposit::SwordClient.new( 'service_doc_url' => 'http://localhost:8080/sword-app/servicedocument',
+#                               'username' => 'bob', 'password' => 'sekret', 'proxy_server' => 'my.proxy.edu')
+#
+# Other proxy-related options you can include in the call to Deposit::SwordClient.new are 'proxy_port',
+# 'proxy_username', and 'proxy_password'.
+#
+# If you specify a 'default_collection_url' or a 'default_collection_name', it should
+# correspond to the Deposit URL of one of the collections returned by the Service Document URL
+# you have specified.  Generally you specify either a 'default_collection_url' OR a 'default_collection_name',
+# but not both.  The SwordClient will pick the first match it finds if both are specified, checking the URL
+# before the name.
 
 # Define a custom exception for Sword Client
 class Deposit::SwordException < Exception; end
@@ -63,26 +49,26 @@ class Deposit::SwordException < Exception; end
 include Deposit
 
 class Deposit::SwordClient
-  
+
   # Currently initialized SWORD Connection
   attr_accessor :connection
-  
+
   # Currently loaded SWORD configurations
   attr_accessor :config
-  
+
   # Currently loaded SWORD service document
   attr_writer :service_doc
-    
+
   # Currently parsed SWORD service document
   attr_writer :parsed_service_doc
-  
+
   class << self
     def logger
       @@logger ||= ::Rails.logger if defined?(Rails.logger)
       @@logger ||= ::STDOUT
     end
   end
-    
+
   # Initialize a SWORD Connection based on the config params.
   #
   # This only *initializes* a SwordClient::Connection; it
@@ -99,7 +85,7 @@ class Deposit::SwordClient
       raise SwordException, "A 'service_doc_url' is required."
     end
 
-    #build our connection params from configurations
+    # build our connection params from configurations
     params = {}
     params[:debug_mode] = true if @config['debug_mode']
     params[:username] = @config['username'] if @config['username'] and !@config['username'].empty?
@@ -157,41 +143,14 @@ class Deposit::SwordClient
   #
   # See SwordClient::ParsedServiceDoc for hash structure. 
   def get_default_collection
-    
-    # get our available collections
-    colls = get_collections
-   
-    #locate our default collection, based on configs loaded from sword.yml
-    default_collection = nil
-    colls.each do |c|
-      if @config['default_collection_url']
-        default_collection = c if c['deposit_url'].to_s.strip == @config['default_collection_url'].strip
-        break if default_collection #first matching collection wins!
-      elsif @config['default_collection_name']
-        default_collection = c if c['title'].to_s.strip.downcase == @config['default_collection_name'].strip.downcase
-        break if default_collection #first matching collection wins!
-      end
+    params = {}
+    ['default_collection_url', 'default_collection_name'].each do |key|
+      params[key] = @config[key] if @config[key]
     end
-    
-    default_collection
+    repository.default_collection(params)
   end
 
   # DEPRECATED
-
-  # Retrieve array of available collections from the currently loaded
-  # SWORD Service Document.  Each collection is represented by a
-  # hash of attributes.
-  #
-  # Caches this array of collections for future requests using same client.
-  #
-  # See SwordClient::ParsedServiceDoc for hash structure.
-  def get_collections
-    repository.collections
-  end
-
-  def get_repository_name
-    repository.name
-  end
 
   # Retrieve the SWORD Service Document for current repository.
   def service_document

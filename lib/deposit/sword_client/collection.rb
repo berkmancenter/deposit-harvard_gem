@@ -7,8 +7,11 @@ class Deposit::SwordClient::Collection
   # just methods to pluck those elements from the @properties hash.
   attr_accessor :source, :collection, :deposit_url, :accept_packaging, :properties, :title
 
-  # given a collection url, read it and get the edit links to the items in the collection
-  def initialize(source)
+  # Collection belongs to a repository.  Given a source, read it and get info about the
+  # collection.
+  def initialize(repository, source)
+    # need this internally to have access to @repository.connection for pulling data
+    @repository = repository
 
     @collection = @deposit_url = nil
     @properties = {}
@@ -39,14 +42,39 @@ class Deposit::SwordClient::Collection
     @properties[key]
   end
 
+  def list
+    unless @list
+      response = @repository.connection.get @deposit_url
+      @list = response.body
+    end
+    @list
+  end
+
+  def items
+    @items ||= parse_list
+  end
+
   # return a list of the URLs to the items in this collection
-  def items(collection = @collection)
-
-    links = Array.new
-
-    collection.entries.each { |entry| links << entry.edit_link.to_s }
-
-    links
+  def parse_list
+    doc = REXML::Document.new(list)
+    root = doc.root
+    list_items = []
+    root.elements.each("//atom:feed") do |entry|
+      item = {}
+      entry.elements.each do |e|
+        case e.name
+        when "id", "link", "updated"
+          item[e.name] = e.text
+        when "author"
+          item[e.name] ||= []
+          e.elements.each("atom:name") do |author|
+            item[e.name] << author.text
+          end
+        end
+      end
+      list_items << item unless item.empty?
+    end
+    list_items
   end
 
 end
