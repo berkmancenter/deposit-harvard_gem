@@ -12,6 +12,8 @@ require File.dirname(__FILE__) + "/deposit/version"
 #   end
 # end
 
+# then you can Deposit.deposit(:mit, hash_with_info) or Deposit.deposit_all.  that way we could make it asynchronous easier 
+
 module Deposit
   require File.dirname(__FILE__) + "/deposit/sword_client"
 end
