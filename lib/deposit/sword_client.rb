@@ -105,12 +105,12 @@ class Deposit::SwordClient
 
     #initialize our SWORD connection
     # (Note: this doesn't actually connect to SWORD, yet!)
-    @connection = SwordClient::Connection.new(@config['service_doc_url'], params)
+    @connection = Connection.new(@config['service_doc_url'], params)
   end
 
   # get the details about the repo at the end of the connection
   def repository
-    @repository ||= SwordClient::Repository.new(@connection)
+    @repository ||= Repository.new(@connection)
   end
 
   # Posts a file to the SWORD connection for deposit.
