@@ -90,7 +90,8 @@ class Deposit::SwordClient::Repository
 
 #.. root.each_element("//collection/") {|coll| puts "v"*80; puts "#{coll.expanded_name}: #{coll.elements['atom:title'].get_text}"; puts "v"*80; coll.each_element {|e| p e} ; puts "*"*80}
     root.each_element("//collection|//app:collection") do |collection|
-      c_dog = SwordClient::Collection.new(self, collection)
+      @coll3 << SwordClient::Collection.new(self, collection)
+
       current_collection = {'deposit_url' => collection.attributes['href']}
 
       collection.elements.each do |e|
@@ -101,7 +102,6 @@ class Deposit::SwordClient::Repository
           current_collection[e.name] = e.text
         end
       end
-      @coll3 << c_dog
       @coll2 << current_collection
     end
 
