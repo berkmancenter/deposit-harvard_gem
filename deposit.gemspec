@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
   s.rubyforge_project = "deposit"
 
   s.add_dependency "ratom"
+  s.add_dependency "activerecord"  # Would love to get rid of this
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
