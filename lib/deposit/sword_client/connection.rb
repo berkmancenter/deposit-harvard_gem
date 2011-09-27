@@ -168,7 +168,7 @@ class Deposit::SwordClient::Connection
       http_headers[r_key] = headers[key].to_s if r_key
     end
     
-    #Set our defaults for POST: sending a Zipped up METS file which works with DSpace.org
+    # Set our defaults for POST: sending a Zipped up METS file which works with DSpace.org
     http_headers['Content-Type'] ||= "application/zip"
     http_headers['X-Packaging'] ||= "http://purl.org/net/sword-types/METSDSpaceSIP"
     
