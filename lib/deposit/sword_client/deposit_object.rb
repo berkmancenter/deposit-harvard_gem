@@ -82,8 +82,10 @@ class Deposit::SwordClient::DepositObject
 
   # return the URL required for the selected operation
   # either the edit IRI or the edit-media IRI or the collection IRI
-  def target(method=@method, on=@on, url=@url)
-    case on
+  def target(method = @method, on = @on, url = @url)
+    # Try to set @targeturl if we haven't managed to before
+    unless @targeturl
+      case on
       when "collection" then
         @targeturl = url
         @targeturl = @repo.default['deposit_url'] if @targeturl.nil? and ( method == "get" or method == "post" )
@@ -93,8 +95,9 @@ class Deposit::SwordClient::DepositObject
         # get the em-link for this container
         dr = SwordClient::DepositReceipt.new(url)
         @targeturl = dr.em_link
-    end if !@targeturl
-    # set the default collection url if nothing else available, and the action is safe, e.g. GET
+      end
+    end
+
     @targeturl
   end
 
