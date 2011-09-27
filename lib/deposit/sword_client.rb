@@ -76,7 +76,6 @@ class Deposit::SwordClient
 
   def initialize(config = {})
 
-    puts "Loading up with #{config.inspect}"
     # Load some default config (this is basically a reverse_merge with the block)
     @config = config.merge( "service_doc_url" => "http://localhost:3000/sword-app/servicedocument", "username" => nil, "password" => nil ) {|key, oldval, newval| oldval}
 
