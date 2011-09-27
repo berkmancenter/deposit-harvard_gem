@@ -49,8 +49,9 @@ class Deposit::SwordClient::Repository
   end
 
   def get_default_collection(params = {})
-    # locate our default collection, based on params from config
-    default_collection = nil
+    # Find a default collection, based on params if we can, or just use the first one if we can't.
+    default_collection = @collections.first
+
     @collections.each do |c|
       if params['default_collection_url']
         default_collection = c if c['deposit_url'].to_s.strip == params['default_collection_url'].strip
@@ -105,8 +106,6 @@ class Deposit::SwordClient::Repository
       @coll2 << current_collection
     end
 
-#..    @parsed_service_doc.collections << @curr_collection
-
     # Mimic (for now) the current behavior in the stream parser, and
     # set the repo's name to the last non-collection atom:title node's value
     @name ||= root.elements["/*/*/atom:title[last()]"].get_text
@@ -117,7 +116,6 @@ class Deposit::SwordClient::Repository
     #..      "SWORD Test Group"
     #..      "Default"
 
-#..      @parsed_service_doc.repository_name = value
     parsed_service_doc
   end
 
