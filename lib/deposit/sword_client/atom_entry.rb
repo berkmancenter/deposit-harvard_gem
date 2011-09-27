@@ -12,7 +12,7 @@ class Deposit::SwordClient::AtomEntry
 
   # initialize with an array of info to go in an atom object
   # expects ATOM metadata at the top level, and a hash of dc metadata can also be provided
-  def initialize( metadata = { "id" => "atomtestid", "authors" => ["Mark","Richard"], "dc" => { "title" => "dctesttitle" } } )
+  def initialize( metadata = { "id" => "atomtestid", "authors" => ["Mark", "Richard"], "dc" => { "title" => "dctesttitle" } } )
 
     entry = Atom::Entry.new do |entry|
       # add ATOM stuff

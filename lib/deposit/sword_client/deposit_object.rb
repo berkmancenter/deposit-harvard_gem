@@ -4,7 +4,7 @@ class Deposit::SwordClient::DepositObject
 
   attr_accessor :method, :on, :url, :filepath, :metadata, :repo, :atomentry, :multipart
 
-  def initialize(method="get", on="collection", url=nil, filepath=nil, metadata={}, heads={}, repo=nil)
+  def initialize(method = "get", on = "collection", url = nil, filepath = nil, metadata = {}, heads = {}, repo = nil)
 
     # set defaults
     @method = method
@@ -17,7 +17,7 @@ class Deposit::SwordClient::DepositObject
 
     # build necessary parts - identify based on the information provided at init
     @atomentry = SwordClient::AtomEntry.new(@metadata) if type != "file"
-    @multipart = SwordClient::MultiPart.new(@atomentry,@filepath,@supplied_heads) if type == "multipart"
+    @multipart = SwordClient::MultiPart.new(@atomentry, @filepath, @supplied_heads) if type == "multipart"
 
     # raise exceptions if all required is not available
     raise SwordException, "could not find file at " + filepath if ( !filepath.nil? and !File.exists?(filepath) )
@@ -40,21 +40,21 @@ class Deposit::SwordClient::DepositObject
   def headers(hds = @supplied_heads)
 
     case type
-      when "file"
-        case method
-          when "post","put"
-            hds['Content-Type'] ||= 'binary/octet-stream' if !hds.has_key?('Content-Type')
-            hds['Content-MD5'] ||= Digest::MD5.hexdigest(File.read(@filepath)) if !hds.has_key?('Content-MD5')
-            hds['Content-Disposition'] ||= "attachment; filename=" + File.basename(@filepath).to_s if !hds.has_key?("Content-Disposition")
-            #hds['Packaging'] ||= "http://purl.org/net/sword/package/Binary" if !hds.has_key?('Packaging')            
-        end
+    when "file"
+      case method
+        when "post", "put"
+          hds['Content-Type'] ||= 'binary/octet-stream' if !hds.has_key?('Content-Type')
+          hds['Content-MD5'] ||= Digest::MD5.hexdigest(File.read(@filepath)) if !hds.has_key?('Content-MD5')
+          hds['Content-Disposition'] ||= "attachment; filename=" + File.basename(@filepath).to_s if !hds.has_key?("Content-Disposition")
+          #hds['Packaging'] ||= "http://purl.org/net/sword/package/Binary" if !hds.has_key?('Packaging')
+      end
 
-      when "atom"
-        hds['Content-Type'] ||= "application/atom+xml"
+    when "atom"
+      hds['Content-Type'] ||= "application/atom+xml"
 
-      when "multipart"
-        # for a multipart the headers are set in multipart
-        # make sure content type, disposition, md5 is unset if in the incoming headers
+    when "multipart"
+      hds['Content-Type'] ||= "application/zip"
+      hds['X-Packaging'] ||= "http://purl.org/net/sword-types/METSDSpaceSIP"
     end
 
     hds
@@ -88,7 +88,7 @@ class Deposit::SwordClient::DepositObject
       case on
       when "collection" then
         @targeturl = url
-        @targeturl = @repo.default['deposit_url'] if @targeturl.nil? and ( method == "get" or method == "post" )
+        @targeturl = @repo.default_collection.deposit_url if @targeturl.nil? and ( method == "get" or method == "post" )
       when "edit" then
         @targeturl = url
       when "edit-media" then

@@ -7,7 +7,7 @@ require 'active_record'
 class Deposit::SwordClient::Repository
 
   # getsets for repo info
-  attr_accessor :collections, :connection, :default, :name, :parsed_service_document, :service_document
+  attr_accessor :collections, :connection, :name, :parsed_service_document, :service_document
 
   def initialize(connection)
     # make the variables available
@@ -35,9 +35,6 @@ class Deposit::SwordClient::Repository
       @collections = @coll3
     end
 
-    # TODO - set the default collection
-    # @default = get_default_collection( { 'default_collection_url' => @config['default_collection_url'],
-    #                                      'default_collection_name' => @config['default_collection_name'] } )
   end
 
   def coll2
@@ -48,7 +45,7 @@ class Deposit::SwordClient::Repository
     @coll3
   end
 
-  def get_default_collection(params = {})
+  def default_collection(params = {})
     # Find a default collection, based on params if we can, or just use the first one if we can't.
     default_collection = @collections.first
 
@@ -117,6 +114,15 @@ class Deposit::SwordClient::Repository
     #..      "Default"
 
     parsed_service_doc
+  end
+
+  def deposit(collection = default_collection, filepath = nil, metadata = {}, headers = {})
+    # create a deposit object
+    object = Deposit::SwordClient::DepositObject.new("post", "collection", collection.deposit_url, filepath, metadata, headers, self)
+    puts "*"*60
+    puts "Object headers in #deposit are ", object.headers.inspect
+    puts "*"*60
+    response = @connection.post(object.object, object.target, object.headers)
   end
 
   # Saves a property value for the current collection.

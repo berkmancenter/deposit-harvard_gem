@@ -142,6 +142,9 @@ class Deposit::SwordClient::Connection
 
     # Map our passed in headers to valid HTTP POST headers
     post_headers = http_post_headers(headers)
+    puts "*"*60
+    puts "Object headers in Connection#post_file are ", post_headers.inspect
+    puts "*"*60
 
     # POST our file to deposit_url
     post(file_path, deposit_url, post_headers)
