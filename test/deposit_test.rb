@@ -57,9 +57,10 @@ class DepositTest < Test::Unit::TestCase
 
   # test a simple post to the repo
   def test_post
-    sword = Deposit::SwordClient.new(nil,@config)
-    posted = sword.execute("post","collection",nil,"#{TEST_FIXTURES_DIR}/example.zip")
-    assert_not_nil posted
+    config_me
+    repo = Deposit::repositories[:test].repository
+    response = repo.deposit(repo.default_collection, "#{TEST_FIXTURES_DIR}/example.zip", {'authors' => ["Waldron, Ryan", "Snark, Boojum"], 'published' => Date.parse("Jan 14, 1997") } )
+    assert_not_nil response
   end
 
   # test sending data to a repo
