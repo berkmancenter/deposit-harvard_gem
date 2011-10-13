@@ -186,8 +186,8 @@ class Deposit::Packagers::Mets
     # Create the zipped package
     Zip::ZipFile.open(archive_file_name, Zip::ZipFile::CREATE) do |zip|
       zip.add('mets.xml', metadata_filename)
-      @sac_filecount.each do |sac_file|
-        zip.add(sac_file, [@sac_root_in, @sac_dir_in, sac_file].compact.join('/'))
+      @sac_files.each do |sac_file|
+        zip.add(File.basename(sac_file), [@sac_root_in, @sac_dir_in, sac_file].compact.reject{|a| a.empty?}.join('/'))
       end
     end
   end
