@@ -30,7 +30,7 @@ class Deposit::SwordClient::AtomEntry
       metadata["categories"].each { |category| entry.links << Atom::Categories.new(:category => category) } if metadata.has_key?("categories")
 
       # add DCTERMS stuff - just presume passed keys are valid
-      metadata["dc"].each { |key, value| entry["http://purl.org/dc/terms/", key] << metadata["dc"][key] } if metadata.has_key?("dc")
+      metadata["dc"].each { |key, value| entry["http://purl.org/dc/terms/", key] << value } if metadata.has_key?("dc")
     end
 
     @object = entry
