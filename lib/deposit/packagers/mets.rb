@@ -18,9 +18,9 @@ class Deposit::Packagers::Mets
   # sac_creators - Creators
   # sac_subjects - Subjects
   # sac_identifier - Identifier
-  # sac_dateavailable - Date made available
-  # sac_statusstatement - Status
-  # sac_copyrightholder - Copyright holder
+  # sac_date_available - Date made available
+  # sac_status_statement - Status
+  # sac_copyright_holder - Copyright holder
   # sac_custodian - Custodian
   # sac_citation - Bibliographic citation
   # sac_language - Language
@@ -30,21 +30,37 @@ class Deposit::Packagers::Mets
   # sac_rights - Rights
   # sac_filecount = Number of files added
 
+  attr_accessor :sac_root_in, :sac_dir_in, :sac_root_out, :sac_file_out, :sac_metadata_filename,
+                :sac_type, :sac_title, :sac_abstract, :sac_identifier,
+                :sac_date_available, :sac_status_statement, :sac_copyright_holder, :sac_custodian,
+                :sac_citation, :sac_language
+
   def initialize(params = {})
+
+    # Set defaults
     @params = params.merge( "sac_metadata_filename" => "mets.xml" ) {|key, oldval, newval| oldval}
 
-    [ 'sac_root_in', 'sac_dir_in', 'sac_root_out', 'sac_file_out'].each do |param|
-      self.instance_eval("@#{param} = '#{params[param]}'")
-    end
+    single_elements = [ 'sac_root_in', 'sac_dir_in', 'sac_root_out', 'sac_file_out', 'sac_metadata_filename',
+      'sac_type', 'sac_title', 'sac_abstract', 'sac_identifier',
+      'sac_date_available', 'sac_statusstatement', 'sac_copyright_holder', 'sac_custodian',
+      'sac_citation', 'sac_language']
 
-    known_elements = [ 'sac_root_in', 'sac_dir_in', 'sac_root_out', 'sac_file_out', 'sac_metadata_filename',
-      'sac_type', 'sac_title', 'sac_abstract', 'sac_creators', 'sac_subjects', 'sac_identifier',
-      'sac_dateavailable', 'sac_statusstatement', 'sac_copyrightholder', 'sac_custodian',
-      'sac_citation', 'sac_language', 'sac_files', 'sac_mimetypes', 'sac_provenances',
-      'sac_rights', 'sac_filecount']
+    multiple_elements = [ 'sac_creators', 'sac_subjects', 'sac_files', 'sac_mimetypes', 'sac_provenances', 'sac_rights']
+
+    known_elements = single_elements + multiple_elements
+
+    single_elements.each do |param|
+      # Yeah, we'll make us some ghetto HashWithIndifferentAccess here
+      if val = (params[param] || params[param.to_sym])
+        puts "Calling #{param}= as to_sym, with #{val} as the value"
+        # e.g., sac_abstract = params['sac_abstract']
+        self.send("#{param}=".to_sym, val)
+      end
+    end
 
     @sac_filecount = 0
 
+    # Initialize the multiple-holding elements
     @sac_creators = []
     @sac_subjects = []
     @sac_files = []
@@ -53,20 +69,14 @@ class Deposit::Packagers::Mets
     @sac_rights = []
   end
 
-  def set_type(sac_thetype)
-    @sac_type = sac_thetype
-  end
-
-  def set_title(sac_thetitle)
-    @sac_title = sac_thetitle
-  end
-
-  def set_abstract(sac_theabstract)
-    @sac_abstract = sac_theabstract
-  end
-
   def add_creator(sac_creator)
     @sac_creators << sac_creator
+  end
+
+  def add_file(sac_thefile, sac_themimetype)
+    @sac_files << sac_thefile
+    @sac_mimetypes << sac_themimetype
+    @sac_filecount += 1
   end
 
   def add_subject(sac_subject)
@@ -79,40 +89,6 @@ class Deposit::Packagers::Mets
 
   def add_rights(sac_right)
     @sac_rights << sac_right
-  end
-
-  def set_identifier(sac_theidentifier)
-    @sac_identifier = sac_theidentifier
-  end
-
-  def set_status_statement(sac_thestatus)
-    @sac_statusstatement = sac_thestatus
-  end
-
-  def set_copyright_holder(sac_thecopyrightholder)
-    @sac_copyrightholder = sac_thecopyrightholder
-  end
-
-  def set_custodian(sac_thecustodian)
-    @sac_custodian = sac_thecustodian
-  end
-
-  def set_citation(sac_thecitation)
-    @sac_citation = sac_thecitation
-  end
-
-  def set_language(sac_thelanguage)
-    @sac_language = sac_thelanguage
-  end
-
-  def set_date_available(sac_thedta)
-    @sac_date_available = sac_thedta
-  end
-
-  def add_file(sac_thefile, sac_themimetype)
-    @sac_files << sac_thefile
-    @sac_mimetypes << sac_themimetype
-    @sac_filecount += 1
   end
 
   def metadata_filename
