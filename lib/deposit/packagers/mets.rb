@@ -106,7 +106,7 @@ class Deposit::Packagers::Mets
   end
 
   def set_date_available(sac_thedta)
-    @sac_dateavailable = sac_thedta
+    @sac_date_available = sac_thedta
   end
 
   def add_file(sac_thefile, sac_themimetype)
@@ -116,14 +116,19 @@ class Deposit::Packagers::Mets
   end
 
   def metadata_filename
-    [@sac_root_in, @sac_dir_in, @sac_metadata_filename].compact.join('/')
+    mfn = [@sac_root_in, @sac_dir_in, @sac_metadata_filename].compact.join('/')
+    puts("metadata_filename: #{mfn}")
     "/tmp/foggy.xml"
   end
 
   def mets_header
     hdr = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\" ?>\n" +
-          "<mets ID=\"sort-mets_mets\" OBJID=\"sword-mets\" LABEL=\"DSpace SWORD Item\" PROFILE=\"DSpace METS SIP Profile 1.0\" xmlns=\"http://www.loc.gov/METS/\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd\">\n" +
-          "\t<metsHdr CREATEDATE=\"2008-09-04T00:00:00\">\n" +
+          "<mets ID=\"sort-mets_mets\" OBJID=\"sword-mets\" LABEL=\"DSpace SWORD Item\"\n" +
+          "\tPROFILE=\"DSpace METS SIP Profile 1.0\" xmlns=\"http://www.loc.gov/METS/\"\n" +
+          "\txmlns:xlink=\"http://www.w3.org/1999/xlink\"\n"+
+          "\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+          "\txsi:schemaLocation=\"http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd\">\n" +
+          "\t<metsHdr CREATEDATE=\"2007-09-01T00:00:00\">\n" +
           "\t\t<agent ROLE=\"CUSTODIAN\" TYPE=\"ORGANIZATION\">\n"
     hdr << "\t\t\t<name>#{(@sac_custodian || 'Unknown')}</name>\n"
     hdr << "\t\t</agent>\n"
@@ -175,8 +180,9 @@ class Deposit::Packagers::Mets
 
   require 'zip/zip'
 
-  def archive_file_name
-    [@sac_root_out, @sac_file_out].compact.join('/')
+  def archive_filename
+    afn = [@sac_root_out, @sac_file_out].compact.join('/')
+    puts("archive_filename: #{afn}")
     "/tmp/fluffy.zip"
   end
 
@@ -184,7 +190,7 @@ class Deposit::Packagers::Mets
     create_mets_file
 
     # Create the zipped package
-    Zip::ZipFile.open(archive_file_name, Zip::ZipFile::CREATE) do |zip|
+    Zip::ZipFile.open(archive_filename, Zip::ZipFile::CREATE) do |zip|
       zip.add('mets.xml', metadata_filename)
       @sac_files.each do |sac_file|
         zip.add(File.basename(sac_file), [@sac_root_in, @sac_dir_in, sac_file].compact.reject{|a| a.empty?}.join('/'))
@@ -193,8 +199,9 @@ class Deposit::Packagers::Mets
   end
 
   def dmd_sec_header
-    "<dmdSec ID=\"sword-mets-dmd-1\" GROUPID=\"sword-mets-dmd-1_group-1\">\n" +
-    "\t<mdWrap LABEL=\"SWAP Metadata\" MDTYPE=\"OTHER\" OTHERMDTYPE=\"EPDCX\" MIMETYPE=\"text/xml\">\n" +
+    "\t<dmdSec ID=\"sword-mets-dmd-1\" GROUPID=\"sword-mets-dmd-1_group-1\">\n" +
+    "\t\t<mdWrap LABEL=\"SWAP Metadata\" MDTYPE=\"OTHER\" OTHERMDTYPE=\"EPDCX\"\n" +
+    "\t\t\tMIMETYPE=\"text/xml\">\n" +
     "\t\t<xmlData>\n" +
     "\t\t\t<epdcx:descriptionSet xmlns:epdcx=\"http://purl.org/eprint/epdcx/2006-11-16/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://purl.org/eprint/epdcx/2006-11-16/ http://purl.org/eprint/epdcx/xsd/2006-11-16/epdcx.xsd\">\n"
   end
@@ -238,7 +245,7 @@ class Deposit::Packagers::Mets
     end
 
     @sac_creators.each do |sac_creator|
-      dmd_sec_body << statement(dc_elem("creator", value_string(sac_creator)))
+      dmd_sec_body << statement(dc_elem("creator"), value_string(sac_creator))
     end
 
     @sac_subjects.each do |sac_subject|
@@ -246,11 +253,11 @@ class Deposit::Packagers::Mets
     end
 
     @sac_provenances.each do |sac_provenance|
-      dmd_sec_body << statement(dc_term("provenance", value_string(sac_provenance)))
+      dmd_sec_body << statement(dc_term("provenance"), value_string(sac_provenance))
     end
 
     @sac_rights.each do |sac_right|
-      dmd_sec_body << statement(dc_term("rights", value_string(sac_right)))
+      dmd_sec_body << statement(dc_term("rights"), value_string(sac_right))
     end
 
     if @sac_identifier
@@ -273,7 +280,7 @@ class Deposit::Packagers::Mets
     dmd_sec_body << statement_ves_uri_value_uri(dc_elem("type"), ep_term("Type"), ep_ent_type("Expression"))
 
     if @sac_date_available
-      dmd_sec_body << statement(dc_term("available"), value_string_ses_uri(dc_term("W3CDTF")), @sac_date_available)
+      dmd_sec_body << statement(dc_term("available"), value_string_ses_uri(dc_term("W3CDTF"), @sac_date_available))
     end
 
     if @sac_status_statement
