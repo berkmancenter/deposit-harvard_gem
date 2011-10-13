@@ -13,6 +13,7 @@ require File.dirname(__FILE__) + "/deposit/version"
 
 module Deposit
   require File.dirname(__FILE__) + "/deposit/sword_client"
+  require File.dirname(__FILE__) + "/deposit/packagers"
 
   class <<self
     attr_accessor :repositories
