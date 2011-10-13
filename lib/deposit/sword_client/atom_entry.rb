@@ -1,7 +1,7 @@
 # build an atom entry object by sending in a metadata array of ATOM info
 # and optionally a sub-array of DC info
 
-# then access the .xml to get the atom entry as xmk
+# then access the .xml to get the atom entry as xml
 # or access the .entry to get the Atom object
 
 require 'atom'
@@ -34,7 +34,6 @@ class Deposit::SwordClient::AtomEntry
     end
 
     @object = entry
-    
   end
 
   def xml
