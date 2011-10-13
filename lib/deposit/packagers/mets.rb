@@ -7,66 +7,113 @@ class Deposit::Packagers::Mets
 
   # Takes a hash of options, which can include some or all of these:
 
-  # sac_root_in - The root location of the files (without final directory)
+  # Params for building the metadata file and archive file
+
   # sac_dir_in - The directory to zip up in the sac_root_in directory
-  # sac_root_out - The location to write the package out to
   # sac_file_out - The filename to save the package as
   # sac_metadata_filename - The name of the metadata file (defaults to "mets.xml")
-  # sac_type - The type (e.g. ScholarlyWork)
-  # sac_title - The title of the item
+  # sac_root_in - The root location of the files (without final directory)
+  # sac_root_out - The location to write the package out to
+
+  attr_accessor :sac_dir_in, :sac_file_out, :sac_metadata_filename, :sac_root_in, :sac_root_out
+
+  # Metadata holding single values
+
   # sac_abstract - The abstract of the item
-  # sac_creators - Creators
-  # sac_subjects - Subjects
-  # sac_identifier - Identifier
-  # sac_date_available - Date made available
-  # sac_status_statement - Status
+  # sac_citation - Bibliographic citation
   # sac_copyright_holder - Copyright holder
   # sac_custodian - Custodian
-  # sac_citation - Bibliographic citation
+  # sac_date_available - Date made available
+  # sac_identifier - Identifier
   # sac_language - Language
-  # sac_files - File names
-  # sac_mimetypes - MIME type
+  # sac_status_statement - Status
+  # sac_title - The title of the item
+  # sac_type - The type (e.g. 'ScholarlyWork')
+
+  attr_accessor :sac_abstract, :sac_citation, :sac_copyright_holder, :sac_custodian,
+                :sac_date_available, :sac_identifier, :sac_language,
+                :sac_status_statement, :sac_title, :sac_type
+
+  # Metadata which have to be lists of values
+
+  # sac_creators - Creators
   # sac_provenances - Provenances
   # sac_rights - Rights
-  # sac_filecount = Number of files added
+  # sac_subjects - Subjects
 
-  attr_accessor :sac_root_in, :sac_dir_in, :sac_root_out, :sac_file_out, :sac_metadata_filename,
-                :sac_type, :sac_title, :sac_abstract, :sac_identifier,
-                :sac_date_available, :sac_status_statement, :sac_copyright_holder, :sac_custodian,
-                :sac_citation, :sac_language
+  # These all have to be enumerables. Actually, they really need to be Array-valued.
+  attr_accessor :sac_creators, :sac_subjects, :sac_provenances, :sac_rights
+
+  # Special metadata which have to be paired lists of values.
+  # Each file has to have a mimetype specified.
+
+  # sac_files - File names
+  # sac_mimetypes - MIME type
+
+  attr_accessor :sac_files, :sac_mimetypes
+
+  # Yup, I did it
+  attr_accessor :debug
+
+  # This one is going away (TODO)
+  attr_reader :sac_filecount
+
+  def set_with_indifferent_access(hash, key, value)
+    hash[key] = value unless (hash[key.to_s] || hash[key.to_sym])
+  end
 
   def initialize(params = {})
 
     # Set defaults
-    @params = params.merge( "sac_metadata_filename" => "mets.xml" ) {|key, oldval, newval| oldval}
+    set_with_indifferent_access(params, 'sac_metadata_filename', "mets.xml")
 
-    single_elements = [ 'sac_root_in', 'sac_dir_in', 'sac_root_out', 'sac_file_out', 'sac_metadata_filename',
-      'sac_type', 'sac_title', 'sac_abstract', 'sac_identifier',
-      'sac_date_available', 'sac_statusstatement', 'sac_copyright_holder', 'sac_custodian',
-      'sac_citation', 'sac_language']
+    # Define attributes that take a single value and those that take multiples, so
+    # we can initialize them differently.
+    @single_elements = [ 'sac_root_in', 'sac_dir_in', 'sac_root_out', 'sac_file_out',
+                         'sac_metadata_filename', 'sac_type', 'sac_title', 'sac_abstract',
+                         'sac_identifier', 'sac_date_available', 'sac_status_statement',
+                         'sac_copyright_holder', 'sac_custodian', 'sac_citation', 'sac_language']
 
-    multiple_elements = [ 'sac_creators', 'sac_subjects', 'sac_files', 'sac_mimetypes', 'sac_provenances', 'sac_rights']
+    @multiple_elements = [ 'sac_creators', 'sac_subjects', 'sac_provenances', 'sac_rights']
 
-    known_elements = single_elements + multiple_elements
+    # These have to be done specially, because they have to pair up, so the number of elements
+    # in each has to match or we have trouble.
+    @special_multiples = ['sac_files', 'sac_mimetypes']
+    @known_elements = @single_elements + @multiple_elements
 
-    single_elements.each do |param|
+    @single_elements.each do |param|
       # Yeah, we'll make us some ghetto HashWithIndifferentAccess here
       if val = (params[param] || params[param.to_sym])
-        puts "Calling #{param}= as to_sym, with #{val} as the value"
-        # e.g., sac_abstract = params['sac_abstract']
+        puts "Calling #{param}= as to_sym, with #{val} as the value" if debug
+        # e.g., @sac_abstract = params['sac_abstract']
         self.send("#{param}=".to_sym, val)
       end
     end
 
     @sac_filecount = 0
 
-    # Initialize the multiple-holding elements
+    # Initialize the normal multiple-holding elements
     @sac_creators = []
-    @sac_subjects = []
-    @sac_files = []
-    @sac_mimetypes = []
     @sac_provenances = []
     @sac_rights = []
+    @sac_subjects = []
+
+    # Initialize the special paired multiple-holding elements
+    @sac_files = []
+    @sac_mimetypes = []
+
+    @multiple_elements.each do |param|
+      # Yeah, we'll make us some ghetto HashWithIndifferentAccess here
+      if values = (params[param] || params[param.to_sym])
+        raise ArgumentError.new("#{param} needs an Array as its value") unless values.is_a? Array
+        values.each do |val|
+          puts "Adding #{val} to #{param}" if debug
+          # e.g., @sac_creators << params['sac_creators'][2]
+          self.send(param.to_sym) << val
+        end
+      end
+    end
+
   end
 
   def add_creator(sac_creator)
@@ -152,6 +199,10 @@ class Deposit::Packagers::Mets
       f.write(struct_map)
       f.write(mets_footer)
     end
+  end
+
+  def examine_mets_file
+    system("less #{metadata_filename}")
   end
 
   require 'zip/zip'
