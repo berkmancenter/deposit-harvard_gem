@@ -55,9 +55,6 @@ class Deposit::Packagers::Mets
   # Yup, I did it
   attr_accessor :debug
 
-  # This one is going away (TODO)
-  attr_reader :sac_filecount
-
   def set_with_indifferent_access(hash, key, value)
     hash[key] = value unless (hash[key.to_s] || hash[key.to_sym])
   end
@@ -90,8 +87,6 @@ class Deposit::Packagers::Mets
       end
     end
 
-    @sac_filecount = 0
-
     # Initialize the normal multiple-holding elements
     @sac_creators = []
     @sac_provenances = []
@@ -123,7 +118,6 @@ class Deposit::Packagers::Mets
   def add_file(sac_thefile, sac_themimetype)
     @sac_files << sac_thefile
     @sac_mimetypes << sac_themimetype
-    @sac_filecount += 1
   end
 
   def add_subject(sac_subject)
@@ -136,6 +130,10 @@ class Deposit::Packagers::Mets
 
   def add_rights(sac_right)
     @sac_rights << sac_right
+  end
+
+  def filecount
+    @sac_files.count
   end
 
   def metadata_filename
@@ -163,7 +161,7 @@ class Deposit::Packagers::Mets
   end
 
   def value_string(value)
-    "<epdcx:valueString>#{value}</epdcx:valueString>\n"
+    "<epdcx:valueString>\n#{value}\n</epdcx:valueString>\n"
   end
 
   def statement(property_uri, value)
@@ -171,7 +169,7 @@ class Deposit::Packagers::Mets
   end
 
   def value_string_ses_uri(ses_uri, value)
-    "<epdcx:valueString epdcx:sesURI=\"#{ses_uri}\">#{value}</epdcx:valueString>\n"
+    "<epdcx:valueString epdcx:sesURI=\"#{ses_uri}\">\n#{value}\n</epdcx:valueString>\n"
   end
 
   def statement_value_uri(property_uri, value)
@@ -209,8 +207,12 @@ class Deposit::Packagers::Mets
 
   def archive_filename
     afn = [@sac_root_out, @sac_file_out].compact.join('/')
-    puts("archive_filename: #{afn}")
-    "/tmp/fluffy.zip"
+    if afn.empty?
+      afn = "/tmp/fluffy.zip"
+    else
+      puts("archive_filename: #{afn}")
+    end
+    afn
   end
 
   def create_archive
@@ -252,6 +254,10 @@ class Deposit::Packagers::Mets
     "http://purl.org/eprint/entityType/#{name}"
   end
 
+  def ep_status(name)
+    "http://purl.org/eprint/status/#{name}"
+  end
+
   def ep_term(name)
     "http://purl.org/eprint/terms/#{name}"
   end
@@ -260,7 +266,7 @@ class Deposit::Packagers::Mets
     dmd_sec_body = "<epdcx:description epdcx:resourceId=\"sword-mets-epdcx-1\">\n"
 
     if @sac_type
-      dmd_sec_body << statement_ves_uri_value_uri(dc_elem('type'), ep_term("Type"), @sac_type)
+      dmd_sec_body << statement_ves_uri_value_uri(dc_elem('type'), ep_term("Type"), ep_ent_type(@sac_type))
     end
 
     if @sac_title
@@ -311,7 +317,7 @@ class Deposit::Packagers::Mets
     end
 
     if @sac_status_statement
-      dmd_sec_body << statement_ves_uri_value_uri(ep_term("Status"), ep_term("Status"), @sac_status_statement)
+      dmd_sec_body << statement_ves_uri_value_uri(ep_term("status"), ep_term("Status"), ep_status(@sac_status_statement))
     end
 
     if @sac_copyright_holder
@@ -333,10 +339,10 @@ class Deposit::Packagers::Mets
     str = "\t<fileSec>\n"
     str << "\t\t<fileGrp ID=\"sword-mets-fgrp-1\" USE=\"CONTENT\">\n"
 
-    @sac_filecount.times do |i|
-      str << "\t\t\t<file GROUPID=\"sword-mets-fgid-0\" ID=\"sword-mets-file-#{i}\" "
-      str << "MIMETYPE=\"#{@sac_mimetypes[i]}\">\n"
-      str << "\t\t\t\t<FLocat LOCTYPE=\"URL\" xlink:href=\"#{clean(@sac_files[i])}\" />\n"
+    @sac_files.each_with_index do |file, index|
+      str << "\t\t\t<file GROUPID=\"sword-mets-fgid-#{index}\" ID=\"sword-mets-file-#{index}\" "
+      str << "MIMETYPE=\"#{@sac_mimetypes[index]}\">\n"
+      str << "\t\t\t\t<FLocat LOCTYPE=\"URL\" xlink:href=\"#{clean(File.basename(file))}\" />\n"
       str << "\t\t\t</file>\n"
     end
     str << "\t\t</fileGrp>\n"
@@ -349,7 +355,7 @@ class Deposit::Packagers::Mets
     str = "\t<structMap ID=\"sword-mets-struct-1\" LABEL=\"structure\" TYPE=\"LOGICAL\">\n"
     str << "\t\t<div ID=\"sword-mets-div-1\" DMDID=\"sword-mets-dmd-1\" TYPE=\"SWORD Object\">\n"
     str << "\t\t\t<div ID=\"sword-mets-div-2\" TYPE=\"File\">\n"
-    @sac_filecount.times do |i|
+    @sac_files.count.times do |i|
       str << "\t\t\t\t<fptr FILEID=\"sword-mets-file-#{i}\" />\n"
     end
     str << "\t\t\t</div>\n"

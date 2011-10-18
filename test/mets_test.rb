@@ -55,7 +55,6 @@ class MetsTest < Test::Unit::TestCase
     end
     assert m.sac_files.is_a? Array
     assert m.sac_files.size == 3
-    assert m.sac_filecount == 3
-    puts m.sac_files
+    assert m.filecount == 3
   end
 end
