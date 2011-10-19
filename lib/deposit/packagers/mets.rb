@@ -138,8 +138,12 @@ class Deposit::Packagers::Mets
 
   def metadata_filename
     mfn = [@sac_root_in, @sac_dir_in, @sac_metadata_filename].compact.join('/')
-    puts("metadata_filename: #{mfn}")
-    "/tmp/foggy.xml"
+    if mfn.empty?
+      mfn = "/tmp/foggy.xml"
+    else
+      puts("metadata_filename: #{mfn}")
+    end
+    mfn
   end
 
   def mets_header
