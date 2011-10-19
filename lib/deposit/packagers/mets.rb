@@ -203,6 +203,10 @@ class Deposit::Packagers::Mets
     end
   end
 
+  def clean_up_files!
+    File.delete metadata_filename, archive_filename
+  end
+
   def examine_mets_file
     system("less #{metadata_filename}")
   end
