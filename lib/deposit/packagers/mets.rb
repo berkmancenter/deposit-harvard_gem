@@ -136,16 +136,6 @@ class Deposit::Packagers::Mets
     @sac_files.count
   end
 
-  def metadata_filename
-    mfn = [@sac_root_in, @sac_dir_in, @sac_metadata_filename].compact.join('/')
-    if mfn.empty?
-      mfn = "/tmp/foggy.xml"
-    else
-      puts("metadata_filename: #{mfn}")
-    end
-    mfn
-  end
-
   def mets_header
     hdr = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\" ?>\n" +
           "<mets ID=\"sort-mets_mets\" OBJID=\"sword-mets\" LABEL=\"DSpace SWORD Item\"\n" +
@@ -192,6 +182,16 @@ class Deposit::Packagers::Mets
     "epdcx:valueURI=\"#{value}\" />\n"
   end
 
+  def metadata_filename
+    mfn = [@sac_root_out, @sac_metadata_filename].compact.join('/')
+    if mfn.empty?
+      mfn = "/tmp/foggy.xml"
+    else
+      puts("metadata_filename: #{mfn}")
+    end
+    mfn
+  end
+
   # Write the metadata (mets) file
   def create_mets_file
     File.open(metadata_filename, 'w') do |f|
@@ -201,10 +201,6 @@ class Deposit::Packagers::Mets
       f.write(struct_map)
       f.write(mets_footer)
     end
-  end
-
-  def clean_up_files!
-    File.delete metadata_filename, archive_filename
   end
 
   def examine_mets_file
@@ -233,6 +229,10 @@ class Deposit::Packagers::Mets
         zip.add(File.basename(sac_file), [@sac_root_in, @sac_dir_in, sac_file].compact.reject{|a| a.empty?}.join('/'))
       end
     end
+  end
+
+  def clean_up_files!
+    File.delete metadata_filename, archive_filename
   end
 
   def dmd_sec_header
